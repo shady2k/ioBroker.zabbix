@@ -1,12 +1,12 @@
 {
-  "name": "iobroker.template",
+  "name": "iobroker.zabbix",
   "version": "0.0.1",
-  "description": "Template for adapter development",
+  "description": "ioBroker Zabbix integration",
   "author": {
-    "name": "Author",
-    "email": "author@mail.com"
+    "name": "shady2k",
+    "email": "shady2k@gmail.com"
   },
-  "homepage": "https://github.com/Author/ioBroker.template",
+  "homepage": "https://github.com/shady2k/ioBroker.zabbix",
   "license": "MIT",
   "keywords": [
     "ioBroker",
@@ -16,7 +16,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Author/ioBroker.template"
+    "url": "https://github.com/shady2k/ioBroker.zabbix"
   },
   "dependencies": {
     "@iobroker/adapter-core": "^2.0.0"
@@ -51,7 +51,7 @@
     "lint": "eslint"
   },
   "bugs": {
-    "url": "https://github.com/Author/ioBroker.template/issues"
+    "url": "https://github.com/shady2k/ioBroker.zabbix/issues"
   },
   "readmeFilename": "README.md"
 }

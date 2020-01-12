@@ -1,6 +1,6 @@
 {
     "common": {
-        "name": "template",
+        "name": "zabbix",
         "version": "0.0.1",
         "news": {
             "0.0.1": {
@@ -16,7 +16,7 @@
                 "zh-cn": "首次出版"
             }
         },
-        "title": "Template (JavaScript)",
+        "title": "ioBroker Zabbix integration",
         "titleLang": {
             "en": "Template (JavaScript)",
             "de": "Vorlage (JavaScript)",
@@ -46,17 +46,17 @@
         ],
         "keywords": [
             "ioBroker",
-            "template",
             "Smart Home",
-            "home automation"
+            "home automation",
+            "Zabbix"
         ],
         "license": "MIT",
         "platform": "Javascript/Node.js",
         "main": "main.js",
-        "icon": "template.png",
+        "icon": "zabbix.png",
         "enabled": true,
-        "extIcon": "https://raw.githubusercontent.com/Author/ioBroker.template/master/admin/template.png",
-        "readme": "https://github.com/Author/ioBroker.template/blob/master/README.md",
+        "extIcon": "https://raw.githubusercontent.com/shady2k/ioBroker.zabbix/master/admin/template.png",
+        "readme": "https://github.com/shady2k/ioBroker.zabbix/blob/master/README.md",
         "loglevel": "info",
         "mode": "daemon",
         "type": "general",

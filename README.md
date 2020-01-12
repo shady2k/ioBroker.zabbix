@@ -1,5 +1,7 @@
-![Logo](admin/template.png)
+![Logo](admin/zabbix.png)
 # ioBroker.zabbix
+
+Still in development, does not work!
 
 [![NPM version](http://img.shields.io/npm/v/iobroker.template.svg)](https://www.npmjs.com/package/iobroker.template)
 [![Downloads](https://img.shields.io/npm/dm/iobroker.template.svg)](https://www.npmjs.com/package/iobroker.template)

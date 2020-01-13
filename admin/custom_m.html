@@ -1,22 +1,49 @@
 <script type="text/x-iobroker" data-template-name="zabbix">
+    <div class="col s2">
+        <input type="checkbox" data-field="enabled" data-default="false"/>
+        <span class="translate">Enabled</span>
+    </div>
+    <div class="row">
+        <div class="col s12">
+            <h6 class="translate title">Get</h6>
+        </div>
+    </div>
     <div class="row">
         <div class="col s2">
-            Test2
-            <input type="checkbox" data-field="enabled" data-default="false"/>
-            <!-- this field is mandatory, just to find out if to include this settings or not</span-->
-            <span class="translate">enabled</span>
-        </div>
-        <div class="col s4">
-            <input type="text" data-field="interval" size="30">
-            <span class="translate">period of time</span>
-        </div>
-        <div class="col s4">
-            <input type="text" data-field="state" size="30">
-            <span class="translate">new state</span>
+            <input type="checkbox" data-field="enabledGet" data-default="false"/>
+            <span class="translate">Enabled</span>
         </div>
         <div class="col s2">
-            <input type="checkbox" data-field="setAck" data-default="false">
-            <span class="translate">ack</span>
+            <input type="text" data-field="zabbixItemGet" size="30">
+            <span class="translate">Zabbix item ID</span>
+        </div>
+        <div class="col s2">
+            <input type="text" data-field="interval" size="30">
+            <span class="translate">Period of time</span>
+        </div>
+        <div class="col s2">
+            <input type="checkbox" data-field="setAck" data-default="true">
+            <span class="translate">Ack</span>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col s12">
+            <h6 class="translate title">Set</h6>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col s2">
+            <input type="checkbox" data-field="enabledSet" data-default="false"/>
+            <span class="translate">Enabled</span>
+        </div>
+        <div class="col s2">
+            <input type="text" data-field="zabbixHost" size="30">
+            <span class="translate">Technical name of monitored host</span>
+        </div>
+        <div class="col s2">
+            <input type="text" data-field="zabbixItemKey" size="30">
+            <span class="translate">Zabbix item key (leave blank if mathes with ioBroker state name)</span>
         </div>
     </div>
 </script>
@@ -36,9 +63,8 @@
         defaults["zabbix"] = function (obj, instanceObj) {
             return {
                 enabled:        false,
-                interval:       '5m',
-                state:          false,
-                setAck:         false
+                interval:       '30s',
+                setAck:         true
             };
         }
     }

@@ -6,8 +6,11 @@
 const utils = require('@iobroker/adapter-core');
 const ZabbixPromise = require('zabbix-promise');
 
-let zabbix_url = "";
+let zabbix_url = '';
 let secret = 'RjAXsH3vvNa6EE';
+const zabbixSetArr = {};
+let isConnected = false;
+let isInitialized = false;
 
 class Zabbix extends utils.Adapter {
     /**
@@ -119,12 +122,35 @@ class Zabbix extends utils.Adapter {
      * @param {ioBroker.Object | null | undefined} obj
      */
     onObjectChange(id, obj) {
-        if (obj) {
-            // The object was changed
-            this.log.info(`object ${id} changed: ${JSON.stringify(obj)}`);
-        } else {
-            // The object was deleted
-            this.log.info(`object ${id} deleted`);
+        const adapter = this;
+        adapter.log.debug('Object change detected: ' + JSON.stringify(obj));
+        this.deleteObject(id);
+
+        if(obj && obj.common && obj.common.custom && obj.common.custom[adapter.namespace]) {
+            if(obj.common.custom[adapter.namespace].enabled) {
+                this.addToObjects(id, obj);
+            }
+        }
+    }
+
+    addToObjects(id, obj) {
+        const adapter = this;
+        adapter.log.debug("addToObjects: " + JSON.stringify(obj));
+        if(!Object.prototype.hasOwnProperty.call(zabbixSetArr, id)) {
+            if(obj.common.custom[adapter.namespace].enabledSet) {
+                const objExt = { 
+                    "zabbixHost": obj.common.custom[adapter.namespace].zabbixHost,
+                    "zabbixItemKey": obj.common.custom[adapter.namespace].zabbixItemKey || id
+                };
+                adapter.addToZabbixSet(id, objExt);
+            }
+        }
+    }
+
+    deleteObject(id) {
+        if(Object.prototype.hasOwnProperty.call(zabbixSetArr, id)) {
+            this.log.info('Remove Zabbix Set for id:: ' + id);
+            delete zabbixSetArr[id];
         }
     }
 
@@ -134,13 +160,23 @@ class Zabbix extends utils.Adapter {
      * @param {ioBroker.State | null | undefined} state
      */
     onStateChange(id, state) {
-        if (state) {
+        if(state) {
+            if(Object.prototype.hasOwnProperty.call(zabbixSetArr, id)) {
+                if(state.from != 'system.adapter.' + this.namespace) {
+                    this.log.debug('Catch state change "'+id+'": ' + JSON.stringify(state));
+                    const objExt = zabbixSetArr[id];
+                    this.sendToZabbix(objExt.zabbixHost, objExt.zabbixItemKey, state.val);
+                }
+            }
+        }
+        
+        /*if (state) {
             // The state was changed
             this.log.info(`state ${id} changed: ${state.val} (ack = ${state.ack})`);
         } else {
             // The state was deleted
             this.log.info(`state ${id} deleted`);
-        }
+        }*/
     }
 
     // /**
@@ -169,6 +205,8 @@ class Zabbix extends utils.Adapter {
     }
     
     main() {
+        const adapter = this;
+
         if (this.config.url) {
             this.config.protocol = this.config.url.match(/^https:/) ? 'https' : 'http';
             const url = this.config.url.replace('https://', '').replace('http://', '');
@@ -192,15 +230,66 @@ class Zabbix extends utils.Adapter {
             return;
         }
 
+        this.getObjectView('system', 'state', {}, function (err, doc) {
+            if(doc && doc.rows) {
+                for(let i = 0, l = doc.rows.length; i < l; i++) {
+                    const obj = doc.rows[i];
+                    if(obj && obj.id && obj.value && obj.value.common && obj.value.common.custom && 
+                        obj.value.common.custom[adapter.namespace] && obj.value.common.custom[adapter.namespace].enabled) {
+                        if(obj.value.common.custom[adapter.namespace].enabledSet) {
+                            const objExt = { 
+                                "zabbixHost": obj.value.common.custom[adapter.namespace].zabbixHost,
+                                "zabbixItemKey": obj.value.common.custom[adapter.namespace].zabbixItemKey || obj.id
+                            };
+                            adapter.addToZabbixSet(obj.id, objExt);
+                        }
+                    }
+                }
+            }
+            adapter.log.debug("Initialization completed");
+            isInitialized = true;
+            adapter.firstSync();
+        });
+
         this.setState('info.connection', false, true);
 
         this.log.debug("Before zabbix_connect");
         this.zabbix_connect();
 
-        this.subscribeStates('*');
+        this.subscribeForeignObjects('*');
+        this.subscribeForeignStates('*');
+    }
+
+    sendToZabbix(zabbixHost, zabbixItemKey, val) {
+        const adapter = this;
+        adapter.log.debug('sendToZabbix(' + zabbixHost + ', ' + zabbixItemKey + ', ' + val + ')');
+
+        if(isConnected && isInitialized) {
+            const data = {
+                server: this.config.host,
+                host: zabbixHost,
+                key: zabbixItemKey,
+                value: val.toString()
+            };
+            ZabbixPromise.sender(data).then(function(response) {
+                adapter.log.debug(JSON.stringify(response));
+                //callback(response);
+            }).catch(function(response) {
+                adapter.log.error(JSON.stringify(response));
+                //callback(response);
+            });
+        } else {
+            adapter.log.debug('Still not initialized, ignore.');
+        }
+    }
+
+    addToZabbixSet(id, objExt) {
+        this.log.info('Register Zabbix Set for id: ' + id);
+        zabbixSetArr[id] = objExt;
     }
 
     zabbix_connect(callback) {
+        const adapter = this;
         this.log.debug("zabbix_connect");
         if(!this.config.username) {
             this.log.warn("Username is not defined!");
@@ -214,23 +303,59 @@ class Zabbix extends utils.Adapter {
         });
 
         try {
-            let adapter = this;
             this.log.debug("Before login");
             this.zabbix.login().then(function(response) {
-                adapter.log.debug("Callback login");
+                adapter.log.debug("Callback login zabbix_connect: " + JSON.stringify(response));
                 adapter.setConnectionState(true);
             }).catch(function(response) {
-                adapter.log.debug("Callback catch");
-                adapter.log.error(JSON.stringify(response));
+                adapter.log.debug("Callback catch zabbix_connect");
+                adapter.log.error("zabbix_connect 1 " + JSON.stringify(response));
             });
         } catch (error) {
-            this.log.error(error);
+            this.log.error("zabbix_connect " + JSON.stringify(error));
         }
     }
 
     setConnectionState(state) {
         this.log.debug('Set connection state to: ' + state)
         this.setState('info.connection', state, true);
+        isConnected = state;
+        if(state) {
+            this.log.info("Connected to Zabbix server");
+            this.firstSync();
+        } else {
+            this.log.info("Disconnected from Zabbix server");
+        }
+    }
+
+    firstSync() {
+        const adapter = this;
+        if(isConnected && isInitialized) {
+            for (const key in zabbixSetArr) {
+                const objExt = zabbixSetArr[key];
+                this.getState(objExt.zabbixItemKey, function(err, obj) {
+                    if(!err) {
+                        adapter.sendToZabbix(objExt.zabbixHost, objExt.zabbixItemKey, obj.val);
+                    }
+                });
+            }
+        }
+    }
+
+    test() {
+        const adapter = this;
+        let val;
+        this.log.debug("Before getState");
+        const objExt = zabbixSetArr[Object.keys(zabbixSetArr)[0]];
+        this.getState(objExt.zabbixItemKey, function(err, obj) {
+            if(!err) {
+                adapter.log.debug("getState callback");
+                adapter.log.debug(JSON.stringify(obj));
+                val = obj.val;
+                adapter.log.debug("Before sendToZabbix");
+                adapter.sendToZabbix(objExt.zabbixHost, objExt.zabbixItemKey, val);
+            }
+        });
     }
 }
 

@@ -33,10 +33,10 @@ class Zabbix extends utils.Adapter {
      * Is called when databases are connected and adapter received configuration.
      */
     async onReady() {
-        this.log.debug("onReady");
+        this.log.debug('onReady');
 
         if (this.config.username) {
-            this.log.debug("Before getForeignObject");
+            this.log.debug('Before getForeignObject');
             this.getForeignObject('system.config', (err, obj) => {
                 if (!err && obj) {
                     if (!obj.native || !obj.native.secret) {
@@ -135,12 +135,12 @@ class Zabbix extends utils.Adapter {
 
     addToObjects(id, obj) {
         const adapter = this;
-        adapter.log.debug("addToObjects: " + JSON.stringify(obj));
+        adapter.log.debug('addToObjects: ' + JSON.stringify(obj));
         if(!Object.prototype.hasOwnProperty.call(zabbixSetArr, id)) {
             if(obj.common.custom[adapter.namespace].enabledSet) {
                 const objExt = { 
-                    "zabbixHost": obj.common.custom[adapter.namespace].zabbixHost,
-                    "zabbixItemKey": obj.common.custom[adapter.namespace].zabbixItemKey || id
+                    'zabbixHost': obj.common.custom[adapter.namespace].zabbixHost,
+                    'zabbixItemKey': obj.common.custom[adapter.namespace].zabbixItemKey || id
                 };
                 adapter.addToZabbixSet(id, objExt);
             }
@@ -218,7 +218,7 @@ class Zabbix extends utils.Adapter {
             delete this.config.url;
         }
 
-        this.log.debug("Check host");
+        this.log.debug('Check host');
         if (this.config.host) {
             zabbix_url = this.config.protocol + '://' + this.config.host + ':' + (this.config.port || 80) + this.config.path;
             if (zabbix_url[zabbix_url.length - 1] === '/') {
@@ -238,22 +238,22 @@ class Zabbix extends utils.Adapter {
                         obj.value.common.custom[adapter.namespace] && obj.value.common.custom[adapter.namespace].enabled) {
                         if(obj.value.common.custom[adapter.namespace].enabledSet) {
                             const objExt = { 
-                                "zabbixHost": obj.value.common.custom[adapter.namespace].zabbixHost,
-                                "zabbixItemKey": obj.value.common.custom[adapter.namespace].zabbixItemKey || obj.id
+                                'zabbixHost': obj.value.common.custom[adapter.namespace].zabbixHost,
+                                'zabbixItemKey': obj.value.common.custom[adapter.namespace].zabbixItemKey || obj.id
                             };
                             adapter.addToZabbixSet(obj.id, objExt);
                         }
                     }
                 }
             }
-            adapter.log.debug("Initialization completed");
+            adapter.log.debug('Initialization completed');
             isInitialized = true;
             adapter.firstSync();
         });
 
         this.setState('info.connection', false, true);
 
-        this.log.debug("Before zabbix_connect");
+        this.log.debug('Before zabbix_connect');
         this.zabbix_connect();
 
         this.subscribeForeignObjects('*');
@@ -288,11 +288,11 @@ class Zabbix extends utils.Adapter {
         zabbixSetArr[id] = objExt;
     }
 
-    zabbix_connect(callback) {
+    zabbix_connect() {
         const adapter = this;
-        this.log.debug("zabbix_connect");
+        this.log.debug('zabbix_connect');
         if(!this.config.username) {
-            this.log.warn("Username is not defined!");
+            this.log.warn('Username is not defined!');
             return;
         }
 
@@ -303,28 +303,28 @@ class Zabbix extends utils.Adapter {
         });
 
         try {
-            this.log.debug("Before login");
+            this.log.debug('Before login');
             this.zabbix.login().then(function(response) {
-                adapter.log.debug("Callback login zabbix_connect: " + JSON.stringify(response));
+                adapter.log.debug('Callback login zabbix_connect: ' + JSON.stringify(response));
                 adapter.setConnectionState(true);
             }).catch(function(response) {
-                adapter.log.debug("Callback catch zabbix_connect");
-                adapter.log.error("zabbix_connect 1 " + JSON.stringify(response));
+                adapter.log.debug('Callback catch zabbix_connect');
+                adapter.log.error('zabbix_connect 1 ' + JSON.stringify(response));
             });
         } catch (error) {
-            this.log.error("zabbix_connect " + JSON.stringify(error));
+            this.log.error('zabbix_connect ' + JSON.stringify(error));
         }
     }
 
     setConnectionState(state) {
-        this.log.debug('Set connection state to: ' + state)
+        this.log.debug('Set connection state to: ' + state);
         this.setState('info.connection', state, true);
         isConnected = state;
         if(state) {
-            this.log.info("Connected to Zabbix server");
+            this.log.info('Connected to Zabbix server');
             this.firstSync();
         } else {
-            this.log.info("Disconnected from Zabbix server");
+            this.log.info('Disconnected from Zabbix server');
         }
     }
 
@@ -334,7 +334,7 @@ class Zabbix extends utils.Adapter {
             for (const key in zabbixSetArr) {
                 const objExt = zabbixSetArr[key];
                 this.getState(objExt.zabbixItemKey, function(err, obj) {
-                    if(!err) {
+                    if(!err && obj) {
                         adapter.sendToZabbix(objExt.zabbixHost, objExt.zabbixItemKey, obj.val);
                     }
                 });
@@ -345,14 +345,14 @@ class Zabbix extends utils.Adapter {
     test() {
         const adapter = this;
         let val;
-        this.log.debug("Before getState");
+        this.log.debug('Before getState');
         const objExt = zabbixSetArr[Object.keys(zabbixSetArr)[0]];
         this.getState(objExt.zabbixItemKey, function(err, obj) {
-            if(!err) {
-                adapter.log.debug("getState callback");
+            if(!err && obj) {
+                adapter.log.debug('getState callback');
                 adapter.log.debug(JSON.stringify(obj));
                 val = obj.val;
-                adapter.log.debug("Before sendToZabbix");
+                adapter.log.debug('Before sendToZabbix');
                 adapter.sendToZabbix(objExt.zabbixHost, objExt.zabbixItemKey, val);
             }
         });

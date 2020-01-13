@@ -18,13 +18,49 @@
     <script type="text/javascript" src="words.js"></script>
 
     <script type="text/javascript">
+        
+        function encrypt(key, value) {
+            var result = '';
+            for(var i = 0; i < value.length; i++) {
+                result += String.fromCharCode(key[i % key.length].charCodeAt(0) ^ value.charCodeAt(i));
+            }
+            return result;
+        }
+
+        function decrypt(key, value) {
+            var result = '';
+            for(var i = 0; i < value.length; i++) {
+                result += String.fromCharCode(key[i % key.length].charCodeAt(0) ^ value.charCodeAt(i));
+            }
+            return result;
+        }
+
         // This will be called by the admin adapter when the settings page loads
         function load(settings, onChange) {
-            // example: select elements with id=key and class=value and insert value
             if (!settings) return;
+
+            if (settings.url) {
+                settings.protocol = settings.url.match(/^https:/) ? 'https' : 'http';
+                let url = settings.url.replace('https://', '').replace('http://', '');
+                let parts = url.split('/');
+                settings.path = '/' + (parts[1] || '');
+                parts = parts[0].split(':');
+                settings.host = parts[0];
+                settings.port = parts[1] || 80;
+                delete settings.url;
+            }
+
+            systemConfig.native = systemConfig.native || {};
+            systemConfig.native.secret = systemConfig.native.secret || 'RjAXsH3vvNa6EE';
+
             $('.value').each(function () {
                 var $key = $(this);
                 var id = $key.attr('id');
+
+                if ($key === 'password') {
+                    settings.password = decrypt(atob(systemConfig.native.secret), settings.password);
+                }
+
                 if ($key.attr('type') === 'checkbox') {
                     // do not call onChange direct, because onChange could expect some arguments
                     $key.prop('checked', settings[id])
@@ -52,7 +88,7 @@
                 if ($this.attr('type') === 'checkbox') {
                     obj[$this.attr('id')] = $this.prop('checked');
                 } else {
-                    obj[$this.attr('id')] = $this.val();
+                    obj[$this.attr('id')] = ($this.attr('id') === 'password') ? btoa(encrypt(systemConfig.native.secret, $this.val())) : $this.val();
                 }
             });
             callback(obj);
@@ -62,32 +98,48 @@
 </head>
 
 <body>
-
     <div class="m adapter-container">
-
         <div class="row">
             <div class="col s12 m4 l2">
-                <img src="template.png" class="logo">
+                <img src="zabbix.png" class="logo">
             </div>
         </div>
-
-        <!-- Put your content here -->
-
-        <!-- For example columns with settings: -->
         <div class="row">
-            <div class="col s6 input-field">
-                <input type="checkbox" class="value" id="option1" />
-                <label for="option1" class="translate">option1</label>
+            <div class="input-field col s12 m4 l3">
+                <input class="value" id="host" type="text"/>
+                <label class="translate" for="host">Zabbix server IP:</label>
             </div>
-
-            <div class="col s6 input-field">
-                <input type="text" class="value" id="option2" />
-                <label for="option2" class="translate">option2</label>
+            <div class="input-field col s12 m4 l3">
+                <input class="value" id="port" type="number" placeholder="80" min="0" max="65565"/>
+                <label class="translate" for="port">Zabbix server Port:</label>
             </div>
         </div>
-
+        <div class="row">
+            <div class="input-field col s12 m4 l3">
+                <select class="value" id="protocol">
+                    <option value="http">http</option>
+                    <option value="https">https</option>
+                </select>
+                <label class="translate" for="protocol">Zabbix server protocol:</label>
+            </div>
+            <div class="row">
+                <div class="input-field col s12 m4 l3">
+                    <input class="value" id="path" type="text"/>
+                    <label class="translate" for="path">Zabbix server path:</label>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="input-field col s12 m4 l3">
+                <input class="value" id="username" type="text"/>
+                <label class="translate" for="username">Username:</label>
+            </div>
+            <div class="input-field col s12 m4 l3">
+                <input class="value" type="password" id="password"/>
+                <label class="translate" for="password">Password:</label>
+            </div>
+        </div>
     </div>
-
 </body>
 
 </html>

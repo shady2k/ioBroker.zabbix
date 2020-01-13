@@ -19,7 +19,8 @@
     "url": "https://github.com/shady2k/ioBroker.zabbix"
   },
   "dependencies": {
-    "@iobroker/adapter-core": "^2.0.0"
+    "@iobroker/adapter-core": "^2.0.0",
+    "zabbix-promise": "^2.0.2"
   },
   "devDependencies": {
     "@iobroker/testing": "^2.0.0",

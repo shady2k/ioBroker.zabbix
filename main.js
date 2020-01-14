@@ -6,6 +6,23 @@
 const utils = require('@iobroker/adapter-core');
 const ZabbixPromise = require('zabbix-promise');
 
+function parseToSeconds(timeString){
+    let seconds = parseFloat(timeString);
+    if(timeString.indexOf('d') != -1){
+        seconds *= 3600 * 24;
+    }
+    if(timeString.indexOf('m') != -1){
+        seconds *= 60;
+    }
+    if(timeString.indexOf('h') != -1){
+        seconds *= 3600;
+    }
+    if(timeString.indexOf('s') != -1){
+        seconds *= 1;
+    }
+    return seconds;
+}
+
 class Zabbix extends utils.Adapter {
     /**
      * @param {Partial<ioBroker.AdapterOptions>} [options={}]
@@ -110,7 +127,7 @@ class Zabbix extends utils.Adapter {
         try {
             this.log.info('cleaned everything up...');
             this.stopTimer();
-            this.zabbix.logout();
+            //this.zabbix.logout();
             callback();
         } catch (e) {
             callback();
@@ -251,7 +268,7 @@ class Zabbix extends utils.Adapter {
                             const objExt = { 
                                 'id': obj.id,
                                 'zabbixItemGet': custom.zabbixItemGet,
-                                'interval': custom.interval || 30,
+                                'interval': parseToSeconds(custom.interval) || 30,
                                 'setAck': custom.setAck === true,
                                 'status': 0, //ready
                                 'ttl': 0
@@ -269,6 +286,7 @@ class Zabbix extends utils.Adapter {
         this.setState('info.connection', false, true);
 
         this.log.debug('Before zabbix_connect');
+        
         this.zabbix_connect();
 
         this.subscribeForeignObjects('*');
@@ -300,32 +318,57 @@ class Zabbix extends utils.Adapter {
 
     getFromZabbix(objArr) {
         const adapter = this;
-        adapter.log.debug('getFromZabbix, count: ' + Object.keys(objArr).length);
-        const itemids = Object.values(objArr).map(a => a.zabbixItemGet);
+        const icnt = Object.keys(objArr).length;
+        adapter.log.debug('getFromZabbix, count: ' + icnt);
+        if(icnt > 0) {
+            const itemids = Object.values(objArr).map(a => a.zabbixItemGet);
 
-        if(this.isConnected && this.isInitialized) {
-            const data = {
-                itemids: itemids,
-                output: ['lastvalue']
-            };
-            adapter.zabbix.request('item.get', data).then(function(response) {
-                adapter.log.debug(JSON.stringify(response));
-                adapter.processZabbixResponse(response);
-                //callback(response);
-            }).catch(function(response) {
-                adapter.log.error(JSON.stringify(response));
-                //callback(response);
-            });
-        } else {
-            adapter.log.debug('Still not initialized, ignore.');
+            if(this.isConnected && this.isInitialized && itemids.length > 0) {
+                try {
+                    const data = {
+                        itemids: itemids,
+                        output: ['lastvalue']
+                    };
+                    adapter.zabbix.request('item.get', data).then(function(response) {
+                        adapter.log.debug(JSON.stringify(response));
+                        adapter.processZabbixResponse(response);
+                    }).catch(function(response) {
+                        adapter.log.error(JSON.stringify(response));
+                        adapter.log.warn('There are an error while processing request.');
+                        adapter.disconnectFromZabbix();
+                        for(const i in objArr) {
+                            adapter.zabbixGetArr[objArr[i].id].status = 0;
+                        }
+                    });
+                } catch (err) {
+                    adapter.log.error(JSON.stringify(err));
+                    adapter.log.warn('There are an error while processing request.');
+                    adapter.disconnectFromZabbix();
+                    for(const i in objArr) {
+                        adapter.zabbixGetArr[objArr[i].id].status = 0;
+                    }
+                }
+            } else {
+                adapter.log.debug('Still not initialized, ignore.');
+                for(const i in objArr) {
+                    adapter.zabbixGetArr[objArr[i].id].status = 0;
+                }
+            }
         }
     }
 
     processZabbixResponse(response) {
-        for (let i in response)
+        for (const i in response)
         {
-            this.log.debug(response[i].itemid);
-            this.log.debug(response[i].lastvalue);
+            //this.log.debug();
+            const obj = Object.values(this.zabbixGetArr).find(o => o.zabbixItemGet == response[i].itemid);
+            if(obj) {
+                this.zabbixGetArr[obj.id].ttl = this.zabbixGetArr[obj.id].interval;
+                this.zabbixGetArr[obj.id].status = 0;
+                this.log.debug('Update state val ' + obj.id + ' = ' + response[i].lastvalue + ', ack = ' + this.zabbixGetArr[obj.id].setAck);
+                this.setStateAsync(obj.id, response[i].lastvalue, this.zabbixGetArr[obj.id].setAck);
+            }
+            this.log.debug(JSON.stringify(obj));
         }
     }
 
@@ -339,6 +382,18 @@ class Zabbix extends utils.Adapter {
         this.zabbixGetArr[id] = objExt;
     }
 
+    disconnectFromZabbix() {
+        const adapter = this;
+        adapter.log.debug('Disconnecting from Zabbix server.');
+        if(adapter.isConnected) { 
+            adapter.setConnectionState(false);
+        }
+        adapter.stopTimer();
+        setTimeout(function() {
+            adapter.zabbix_connect();
+        }, 30000);
+    }
+
     zabbix_connect() {
         const adapter = this;
         this.log.debug('zabbix_connect');
@@ -347,23 +402,27 @@ class Zabbix extends utils.Adapter {
             return;
         }
 
-        this.zabbix = new ZabbixPromise({
-            url: this.zabbix_url,
-            user: this.config.username,
-            password: this.config.password
-        });
-
         try {
+            this.zabbix = new ZabbixPromise({
+                url: this.zabbix_url,
+                user: this.config.username,
+                password: this.config.password
+            });
+
             this.log.debug('Before login');
-            this.zabbix.login().then(function(response) {
-                adapter.log.debug('Callback login zabbix_connect: ' + JSON.stringify(response));
+            
+            this.zabbix.login().then(function() {
+                adapter.log.debug('Callback login zabbix_connect');
                 adapter.setConnectionState(true);
-            });/*.catch(function(response) {
-                adapter.log.debug('Callback catch zabbix_connect');
-                adapter.log.error('zabbix_connect 1 ' + JSON.stringify(response));
-            });*/
-        } catch (error) {
-            this.log.error('zabbix_connect ' + JSON.stringify(error));
+            }).catch(function(err) {
+                adapter.log.error(JSON.stringify(err));
+                adapter.log.warn('Can\'t connect to Zabbix server! Will try to connect in 30 sec...');
+                adapter.disconnectFromZabbix();
+            });
+        } catch (err) {
+            adapter.log.error(JSON.stringify(err));
+            adapter.log.warn('Can\'t connect to Zabbix server! Will try to connect in 30 sec...');
+            adapter.disconnectFromZabbix();
         }
     }
 
@@ -394,56 +453,58 @@ class Zabbix extends utils.Adapter {
     startTimer() {
         const adapter = this;
         this.globalTimer = setTimeout(function() {
-            //adapter.onTick();
-        }, 10000);
+            adapter.onTick();
+        }, 1000);
     }
 
     stopTimer() {
+        this.log.debug('Stopping timer.');
         clearTimeout(this.globalTimer);
     }
 
     onTick() {
-        this.log.debug('Timer tick');
-        const objArr = [];
+        this.log.debug('Timer tick: ' + JSON.stringify(this.zabbixGetArr));
+        if(this.isConnected && this.isInitialized) {
+            const objArr = [];
 
-        for (const key in this.zabbixGetArr) {
-            const objExt = this.zabbixGetArr[key];
-            objExt.ttl = objExt.ttl - 1;
-            if(objExt.ttl < 0) objExt.ttl = 0;
-            if(objExt.ttl == 0 && objExt.status == 0) {
-                this.log.debug('Add to array');
-                objExt.status = 1;
-                objArr.push(this.zabbixGetArr[key]);
+            for (const key in this.zabbixGetArr) {
+                const objExt = this.zabbixGetArr[key];
+                objExt.ttl = objExt.ttl - 1;
+                if(objExt.ttl < 0) objExt.ttl = 0;
+                if(objExt.ttl == 0 && objExt.status == 0) {
+                    objExt.status = 1;
+                    objArr.push(this.zabbixGetArr[key]);
+                }
             }
+            
+            if(objArr.length > 0) {
+                this.getFromZabbix(objArr);
+            }
+            
+            this.startTimer();
+        } else {
+            this.log.debug('Not initialized, ignore.');
+            this.stopTimer();
         }
-        this.log.debug('Before getFromZabbix call');
-        this.getFromZabbix(objArr);
-        
-        this.log.debug(JSON.stringify(this.zabbixGetArr));
-        this.startTimer();
     }
 
     init() {
         this.log.debug('Init call');
         if(this.isConnected && this.isInitialized) {
-            this.log.debug('Init inside');
-            //this.firstSync();
+            this.firstSync();
             this.onTick();
-            //this.startTimer();
         }
     }
 
     test() {
         const adapter = this;
         let val;
-        this.log.debug('Before getState');
         const objExt = this.zabbixSetArr[Object.keys(this.zabbixSetArr)[0]];
         this.getState(objExt.zabbixItemKey, function(err, obj) {
             if(!err && obj) {
                 adapter.log.debug('getState callback');
                 adapter.log.debug(JSON.stringify(obj));
                 val = obj.val;
-                adapter.log.debug('Before sendToZabbix');
                 adapter.sendToZabbix(objExt.zabbixHost, objExt.zabbixItemKey, val);
             }
         });

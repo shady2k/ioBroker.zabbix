@@ -13,25 +13,15 @@ This adapter connects ioBroker with Zabbix Server.
 ### Getting started
 
 You are almost done, only a few steps left:
-1. If you want send data to Zabbix you need to create new item in Zabbix with "Zabbix trapper" type.
-
-
-1. Initialize the current folder as a new git repository:  
-    ```bash
-    git init
-    git add .
-    git commit -m "Initial commit"
-    ```
-1. Link your local repository with the one on GitHub:  
-    ```bash
-    git remote add origin https://github.com/Author/ioBroker.template
-    ```
-
-1. Push all files to the GitHub repo:  
-    ```bash
-    git push origin master
-    ```
-1. Head over to [main.js](main.js) and start programming!
+1. For send data to Zabbix you need to create new item in Zabbix with "Zabbix trapper" type. It is recommended that Zabbix item key will be same as object id in ioBroker.
+![](2020-01-14-16-21-38.png)
+2. For get value from Zabbix item, item ID from Zabbix used. Item ID can be obtained from URL of specific Zabbix item, e.g.: https://zabbix.host/history.php?action=showgraph&itemids[]=30277, in this case item ID is 30277.
+3. Now in ioBroker open any choosed object and select checkbox enable under Get or Set section. 
+Period of time - with this interval value will be fetched from Zabbix API. Format of this field - 1d2h35m30s, where d - days, h - hours, m - minutes and s - seconds.
+Technical name of monitored host - host name from Zabbix. If leave Zabbix item key blank will be used object id. 
+Ack - only state with this acknowledge will be sent to Zabbix (Checked Ack - ack:true, unchecked - ack:false).
+![](2020-01-14-16-51-03.png)
+4. All done, states with Set enable will be posted to Zabbix each time it changes with specified Ack. States with Get enable will be fetched from Zabbix API in specified interval.
 
 ## Changelog
 

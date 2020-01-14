@@ -23,6 +23,14 @@ function parseToSeconds(timeString){
     return seconds;
 }
 
+function decrypt(key, value) {
+    let result = '';
+    for (let i = 0; i < value.length; i++) {
+        result += String.fromCharCode(key[i % key.length].charCodeAt(0) ^ value.charCodeAt(i));
+    }
+    return result;
+}
+
 class Zabbix extends utils.Adapter {
     /**
      * @param {Partial<ioBroker.AdapterOptions>} [options={}]
@@ -64,7 +72,7 @@ class Zabbix extends utils.Adapter {
                             this.main();
                         });
                     } else {
-                        this.config.password = this.decrypt(obj.native.secret, new Buffer(this.config.password, 'base64').toString('binary'));
+                        this.config.password = decrypt(obj.native.secret, new Buffer(this.config.password, 'base64').toString('binary'));
                         this.main();
                     }
                 } else {
@@ -74,49 +82,6 @@ class Zabbix extends utils.Adapter {
         } else {
             this.main();
         }
-
-        // The adapters config (in the instance object everything under the attribute "native") is accessible via
-        // this.config:
-        //this.log.info('config option1: ' + this.config.option1);
-        //this.log.info('config option2: ' + this.config.option2);
-
-        /*
-        For every state in the system there has to be also an object of type state
-        Here a simple template for a boolean variable named "testVariable"
-        Because every adapter instance uses its own unique namespace variable names can't collide with other adapters variables
-        */
-        /*await this.setObjectAsync('testVariable', {
-            type: 'state',
-            common: {
-                name: 'testVariable',
-                type: 'boolean',
-                role: 'indicator',
-                read: true,
-                write: true,
-            },
-            native: {},
-        });*/
-
-        /*
-        setState examples
-        you will notice that each setState will cause the stateChange event to fire (because of above subscribeStates cmd)
-        */
-        // the variable testVariable is set to true as command (ack=false)
-        //await this.setStateAsync('testVariable', true);
-
-        // same thing, but the value is flagged "ack"
-        // ack should be always set to true if the value is received from or acknowledged from the target system
-        //await this.setStateAsync('testVariable', { val: true, ack: true });
-
-        // same thing, but the state is deleted after 30s (getState will return null afterwards)
-        //await this.setStateAsync('testVariable', { val: true, ack: true, expire: 30 });
-
-        // examples for the checkPassword/checkGroup functions
-        //let result = await this.checkPasswordAsync('admin', 'iobroker');
-        //this.log.info('check user admin pw ioboker: ' + result);
-
-        //result = await this.checkGroupAsync('admin', 'admin');
-        //this.log.info('check group user admin group admin: ' + result);
     }
 
     /**
@@ -154,21 +119,55 @@ class Zabbix extends utils.Adapter {
     addToObjects(id, obj) {
         const adapter = this;
         adapter.log.debug('addToObjects: ' + JSON.stringify(obj));
+
+        let custom = null;
+        if(obj && obj.value && obj.value.common && obj.value.common.custom && obj.value.common.custom[adapter.namespace]) {
+            custom = obj.value.common.custom[adapter.namespace];
+        } else if(obj && obj.common && obj.common.custom && obj.common.custom[adapter.namespace]) {
+            custom = obj.common.custom[adapter.namespace];
+        } else {
+            adapter.log.debug('Unknown object, ignore');
+            return;
+        }
+
+        // Set
         if(!Object.prototype.hasOwnProperty.call(this.zabbixSetArr, id)) {
-            if(obj.common.custom[adapter.namespace].enabledSet) {
+            if(custom.enabledSet) {
                 const objExt = { 
-                    'zabbixHost': obj.common.custom[adapter.namespace].zabbixHost,
-                    'zabbixItemKey': obj.common.custom[adapter.namespace].zabbixItemKey || id
+                    'id': id,
+                    'zabbixHost': custom.zabbixHost,
+                    'zabbixItemKey': custom.zabbixItemKey || id,
+                    'Ack': custom.Ack,
                 };
-                adapter.addToZabbixSet(id, objExt);
+                adapter.addToZabbixSet(objExt);
+            }
+        }
+        // Get
+        if(!Object.prototype.hasOwnProperty.call(this.zabbixGetArr, id)) {
+            if(custom.enabledGet) {
+                const objExt = { 
+                    'id': id,
+                    'zabbixItemGet': custom.zabbixItemGet,
+                    'interval': parseToSeconds(custom.interval) || 30,
+                    'setAck': custom.setAck === true,
+                    'status': 0, //ready
+                    'ttl': 0
+                };
+                adapter.addToZabbixGet(objExt);
             }
         }
     }
 
     deleteObject(id) {
+        //Set
         if(Object.prototype.hasOwnProperty.call(this.zabbixSetArr, id)) {
-            this.log.info('Remove Zabbix Set for id:: ' + id);
+            this.log.info('Remove Zabbix Set for id: ' + id);
             delete this.zabbixSetArr[id];
+        }
+        //Get
+        if(Object.prototype.hasOwnProperty.call(this.zabbixGetArr, id)) {
+            this.log.info('Remove Zabbix Get for id: ' + id);
+            delete this.zabbixGetArr[id];
         }
     }
 
@@ -183,18 +182,14 @@ class Zabbix extends utils.Adapter {
                 if(state.from != 'system.adapter.' + this.namespace) {
                     this.log.debug('Catch state change "'+id+'": ' + JSON.stringify(state));
                     const objExt = this.zabbixSetArr[id];
-                    this.sendToZabbix(objExt.zabbixHost, objExt.zabbixItemKey, state.val);
+                    if(state.ack === objExt.Ack) {
+                        this.sendToZabbix(objExt.zabbixHost, objExt.zabbixItemKey, state.val);
+                    } else {
+                        this.log.debug('Ignore state value change, because unmatched ack');
+                    }
                 }
             }
         }
-        
-        /*if (state) {
-            // The state was changed
-            this.log.info(`state ${id} changed: ${state.val} (ack = ${state.ack})`);
-        } else {
-            // The state was deleted
-            this.log.info(`state ${id} deleted`);
-        }*/
     }
 
     // /**
@@ -214,14 +209,7 @@ class Zabbix extends utils.Adapter {
     // 	}
     // }
 
-    decrypt(key, value) {
-        let result = '';
-        for (let i = 0; i < value.length; i++) {
-            result += String.fromCharCode(key[i % key.length].charCodeAt(0) ^ value.charCodeAt(i));
-        }
-        return result;
-    }
-    
+  
     main() {
         const adapter = this;
 
@@ -254,27 +242,7 @@ class Zabbix extends utils.Adapter {
                     const obj = doc.rows[i];
                     if(obj && obj.id && obj.value && obj.value.common && obj.value.common.custom && 
                         obj.value.common.custom[adapter.namespace] && obj.value.common.custom[adapter.namespace].enabled) {
-                        const custom = obj.value.common.custom[adapter.namespace];
-                        // Set enabled states
-                        if(custom.enabledSet) {
-                            const objExt = { 
-                                'zabbixHost': custom.zabbixHost,
-                                'zabbixItemKey': custom.zabbixItemKey || obj.id
-                            };
-                            adapter.addToZabbixSet(obj.id, objExt);
-                        }
-                        //Get enabled states
-                        if(custom.enabledGet) {
-                            const objExt = { 
-                                'id': obj.id,
-                                'zabbixItemGet': custom.zabbixItemGet,
-                                'interval': parseToSeconds(custom.interval) || 30,
-                                'setAck': custom.setAck === true,
-                                'status': 0, //ready
-                                'ttl': 0
-                            };
-                            adapter.addToZabbixGet(obj.id, objExt);
-                        }
+                        adapter.addToObjects(obj.id, obj);
                     }
                 }
             }
@@ -305,11 +273,9 @@ class Zabbix extends utils.Adapter {
                 value: val.toString()
             };
             ZabbixPromise.sender(data).then(function(response) {
-                adapter.log.debug(JSON.stringify(response));
-                //callback(response);
+                adapter.log.debug('Zabbix Set response: ' + JSON.stringify(response));
             }).catch(function(response) {
-                adapter.log.error(JSON.stringify(response));
-                //callback(response);
+                adapter.log.error('Zabbix Set response: ' + JSON.stringify(response));
             });
         } else {
             adapter.log.debug('Still not initialized, ignore.');
@@ -330,10 +296,10 @@ class Zabbix extends utils.Adapter {
                         output: ['lastvalue']
                     };
                     adapter.zabbix.request('item.get', data).then(function(response) {
-                        adapter.log.debug(JSON.stringify(response));
+                        adapter.log.debug('Zabbix Get response: ' + JSON.stringify(response));
                         adapter.processZabbixResponse(response);
                     }).catch(function(response) {
-                        adapter.log.error(JSON.stringify(response));
+                        adapter.log.error('Zabbix Get response: ' + JSON.stringify(response));
                         adapter.log.warn('There are an error while processing request.');
                         adapter.disconnectFromZabbix();
                         for(const i in objArr) {
@@ -358,28 +324,30 @@ class Zabbix extends utils.Adapter {
     }
 
     processZabbixResponse(response) {
+        this.log.debug('processZabbixResponse call, count = ' + Object.keys(response).length);
         for (const i in response)
         {
-            //this.log.debug();
             const obj = Object.values(this.zabbixGetArr).find(o => o.zabbixItemGet == response[i].itemid);
             if(obj) {
+                this.log.debug('Found matched object in zabbixGetArr: ' + JSON.stringify(obj));
                 this.zabbixGetArr[obj.id].ttl = this.zabbixGetArr[obj.id].interval;
                 this.zabbixGetArr[obj.id].status = 0;
-                this.log.debug('Update state val ' + obj.id + ' = ' + response[i].lastvalue + ', ack = ' + this.zabbixGetArr[obj.id].setAck);
+                this.log.debug('Update state value "' + obj.id + '" (val = ' + response[i].lastvalue + ', ack = ' + this.zabbixGetArr[obj.id].setAck + ')');
                 this.setStateAsync(obj.id, response[i].lastvalue, this.zabbixGetArr[obj.id].setAck);
             }
-            this.log.debug(JSON.stringify(obj));
         }
     }
 
-    addToZabbixSet(id, objExt) {
-        this.log.info('Register Zabbix Set for id: ' + id);
-        this.zabbixSetArr[id] = objExt;
+    addToZabbixSet(objExt) {
+        this.log.debug('addToZabbixSet call: ' + JSON.stringify(objExt));
+        this.log.info('Register Zabbix Set for id: ' + objExt.id);
+        this.zabbixSetArr[objExt.id] = objExt;
     }
 
-    addToZabbixGet(id, objExt) {
-        this.log.info('Register Zabbix Get for id: ' + id);
-        this.zabbixGetArr[id] = objExt;
+    addToZabbixGet(objExt) {
+        this.log.debug('addToZabbixGet call: ' + JSON.stringify(objExt));
+        this.log.info('Register Zabbix Get for id: ' + objExt.id);
+        this.zabbixGetArr[objExt.id] = objExt;
     }
 
     disconnectFromZabbix() {
@@ -463,7 +431,7 @@ class Zabbix extends utils.Adapter {
     }
 
     onTick() {
-        this.log.debug('Timer tick: ' + JSON.stringify(this.zabbixGetArr));
+        this.log.silly('Timer tick: ' + JSON.stringify(this.zabbixGetArr));
         if(this.isConnected && this.isInitialized) {
             const objArr = [];
 
@@ -494,20 +462,6 @@ class Zabbix extends utils.Adapter {
             this.firstSync();
             this.onTick();
         }
-    }
-
-    test() {
-        const adapter = this;
-        let val;
-        const objExt = this.zabbixSetArr[Object.keys(this.zabbixSetArr)[0]];
-        this.getState(objExt.zabbixItemKey, function(err, obj) {
-            if(!err && obj) {
-                adapter.log.debug('getState callback');
-                adapter.log.debug(JSON.stringify(obj));
-                val = obj.val;
-                adapter.sendToZabbix(objExt.zabbixHost, objExt.zabbixItemKey, val);
-            }
-        });
     }
 }
 

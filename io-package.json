@@ -1,8 +1,18 @@
 {
     "common": {
         "name": "zabbix",
-        "version": "0.0.2",
+        "version": "0.0.3",
         "news": {
+            "0.0.3": {
+                "en": "Upgrade minimist to version 0.2.1",
+                "de": "Aktualisieren Sie den Minimist auf Version 0.2.1",
+                "ru": "Обновление minimist до версии 0.2.1"
+            },
+            "0.0.2": {
+                "en": "Documentation editing",
+                "de": "Bearbeitung der Dokumentation",
+                "ru": "Правка документации"
+            },
             "0.0.1": {
                 "en": "initial release",
                 "de": "Erstveröffentlichung",

@@ -17,10 +17,10 @@
     <script type="text/javascript" src="words.js"></script>
 
     <script type="text/javascript">
-        
+
         function encrypt(key, value) {
             var result = '';
-            for(var i = 0; i < value.length; i++) {
+            for (var i = 0; i < value.length; ++i) {
                 result += String.fromCharCode(key[i % key.length].charCodeAt(0) ^ value.charCodeAt(i));
             }
             return result;
@@ -28,7 +28,7 @@
 
         function decrypt(key, value) {
             var result = '';
-            for(var i = 0; i < value.length; i++) {
+            for (var i = 0; i < value.length; ++i) {
                 result += String.fromCharCode(key[i % key.length].charCodeAt(0) ^ value.charCodeAt(i));
             }
             return result;
@@ -49,18 +49,13 @@
                 delete settings.url;
             } else {
                 settings.port = settings.port || 80
+                settings.host = settings.host || 'http'
+                settings.path = settings.path || '/'
             }
-
-            systemConfig.native = systemConfig.native || {};
-            systemConfig.native.secret = systemConfig.native.secret || 'RjAXsH3vvNa6EE';
 
             $('.value').each(function () {
                 var $key = $(this);
                 var id = $key.attr('id');
-
-                if ($key === 'password') {
-                    settings.password = decrypt(atob(systemConfig.native.secret), settings.password);
-                }
 
                 if ($key.attr('type') === 'checkbox') {
                     // do not call onChange direct, because onChange could expect some arguments
@@ -89,7 +84,7 @@
                 if ($this.attr('type') === 'checkbox') {
                     obj[$this.attr('id')] = $this.prop('checked');
                 } else {
-                    obj[$this.attr('id')] = ($this.attr('id') === 'password') ? btoa(encrypt(systemConfig.native.secret, $this.val())) : $this.val();
+                    $this.val();
                 }
             });
             callback(obj);
@@ -107,11 +102,11 @@
         </div>
         <div class="row">
             <div class="input-field col s12 m4 l3">
-                <input class="value" id="host" type="text"/>
+                <input class="value" id="host" type="text" />
                 <label class="translate" for="host">Zabbix server IP:</label>
             </div>
             <div class="input-field col s12 m4 l3">
-                <input class="value" id="port" type="number" placeholder="80" min="0" max="65565"/>
+                <input class="value" id="port" type="number" placeholder="80" min="0" max="65565" />
                 <label class="translate" for="port">Zabbix server Port:</label>
             </div>
         </div>
@@ -125,18 +120,18 @@
             </div>
             <div class="row">
                 <div class="input-field col s12 m4 l3">
-                    <input class="value" id="path" type="text"/>
+                    <input class="value" id="path" type="text" />
                     <label class="translate" for="path">Zabbix server path:</label>
                 </div>
             </div>
         </div>
         <div class="row">
             <div class="input-field col s12 m4 l3">
-                <input class="value" id="username" type="text"/>
+                <input class="value" id="username" type="text" />
                 <label class="translate" for="username">Username:</label>
             </div>
             <div class="input-field col s12 m4 l3">
-                <input class="value" type="password" id="password"/>
+                <input class="value" type="password" id="password" />
                 <label class="translate" for="password">Password:</label>
             </div>
         </div>

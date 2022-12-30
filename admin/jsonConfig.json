@@ -11,28 +11,30 @@
         },
         "host": {
             "type": "text",
-            "label": "Zabbix server IP:",
+            "label": "Zabbix server IP",
             "sm": 12,
             "md": 4,
             "lg": 3
         },
         "port": {
             "type": "number",
-            "label": "Zabbix server Port:",
+            "label": "Zabbix server Port",
             "sm": 12,
             "md": 4,
             "lg": 3,
             "placeholder": "80",
+            "default": 80,
             "min": 0,
             "max": 65565
         },
         "protocol": {
             "type": "select",
-            "label": "Zabbix server protocol:",
+            "label": "Zabbix server protocol",
             "newLine": true,
             "sm": 12,
             "md": 4,
             "lg": 3,
+            "default": "http",
             "options": [
                 {
                     "value": "http",
@@ -46,7 +48,8 @@
         },
         "path": {
             "type": "text",
-            "label": "Zabbix server path:",
+            "label": "Zabbix server path",
+            "default": "/",
             "sm": 12,
             "md": 4,
             "lg": 3
@@ -60,14 +63,14 @@
         },
         "username": {
             "type": "text",
-            "label": "Username:",
+            "label": "Username",
             "sm": 12,
             "md": 4,
             "lg": 3
         },
         "password": {
             "type": "password",
-            "label": "Password:",
+            "label": "Password",
             "sm": 12,
             "md": 4,
             "lg": 3

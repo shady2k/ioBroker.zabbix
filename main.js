@@ -6,40 +6,30 @@
 const utils = require('@iobroker/adapter-core');
 const ZabbixPromise = require('zabbix-promise');
 
-function parseToSeconds(timeString){
+function parseToSeconds(timeString) {
     let seconds = parseFloat(timeString);
-    if(timeString.indexOf('d') != -1){
+    if (timeString.indexOf('d') != -1) {
         seconds *= 3600 * 24;
     }
-    if(timeString.indexOf('m') != -1){
+    if (timeString.indexOf('m') != -1) {
         seconds *= 60;
     }
-    if(timeString.indexOf('h') != -1){
+    if (timeString.indexOf('h') != -1) {
         seconds *= 3600;
     }
-    if(timeString.indexOf('s') != -1){
+    if (timeString.indexOf('s') != -1) {
         seconds *= 1;
     }
     return seconds;
 }
 
-function decrypt(key, value) {
-    let result = '';
-    for (let i = 0; i < value.length; i++) {
-        result += String.fromCharCode(key[i % key.length].charCodeAt(0) ^ value.charCodeAt(i));
-    }
-    return result;
-}
-
 class Zabbix extends utils.Adapter {
     /**
-     * @param {Partial<ioBroker.AdapterOptions>} [options={}]
+     * @param {Partial<utils.AdapterOptions>} [options={}]
      */
     constructor(options) {
-        super({
-            ...options,
-            name: 'zabbix',
-        });
+        const opts = typeof options === 'string' ? { name: options } : { ...options, name: 'zabbix' };
+        super(opts);
         this.on('ready', this.onReady.bind(this));
         this.on('objectChange', this.onObjectChange.bind(this));
         this.on('stateChange', this.onStateChange.bind(this));
@@ -50,7 +40,6 @@ class Zabbix extends utils.Adapter {
         this.zabbixSetArr = {};
         this.zabbixGetArr = {};
         this.zabbix_url = '';
-        this.secret = 'RjAXsH3vvNa6EE';
         this.globalTimer = null;
     }
 
@@ -64,17 +53,8 @@ class Zabbix extends utils.Adapter {
             this.log.debug('Before getForeignObject');
             this.getForeignObject('system.config', (err, obj) => {
                 if (!err && obj) {
-                    if (!obj.native || !obj.native.secret) {
-                        obj.native = obj.native || {};
-                        require('crypto').randomBytes(24, (ex, buf) => {
-                            this.secret = buf.toString('hex');
-                            this.extendForeignObject('system.config', {native: {secret: this.secret}});
-                            this.main();
-                        });
-                    } else {
-                        this.config.password = decrypt(obj.native.secret, new Buffer(this.config.password, 'base64').toString('binary'));
-                        this.main();
-                    }
+                    this.config.password = this.config.password.toString() || '';
+                    this.main();
                 } else {
                     this.log.error('Cannot find object system.config');
                 }
@@ -109,8 +89,8 @@ class Zabbix extends utils.Adapter {
         adapter.log.debug('Object change detected: ' + JSON.stringify(obj));
         this.deleteObject(id);
 
-        if(obj && obj.common && obj.common.custom && obj.common.custom[adapter.namespace]) {
-            if(obj.common.custom[adapter.namespace].enabled) {
+        if (obj && obj.common && obj.common.custom && obj.common.custom[adapter.namespace]) {
+            if (obj.common.custom[adapter.namespace].enabled) {
                 this.addToObjects(id, obj);
             }
         }
@@ -121,9 +101,9 @@ class Zabbix extends utils.Adapter {
         adapter.log.debug('addToObjects: ' + JSON.stringify(obj));
 
         let custom = null;
-        if(obj && obj.value && obj.value.common && obj.value.common.custom && obj.value.common.custom[adapter.namespace]) {
+        if (obj && obj.value && obj.value.common && obj.value.common.custom && obj.value.common.custom[adapter.namespace]) {
             custom = obj.value.common.custom[adapter.namespace];
-        } else if(obj && obj.common && obj.common.custom && obj.common.custom[adapter.namespace]) {
+        } else if (obj && obj.common && obj.common.custom && obj.common.custom[adapter.namespace]) {
             custom = obj.common.custom[adapter.namespace];
         } else {
             adapter.log.debug('Unknown object, ignore');
@@ -131,9 +111,9 @@ class Zabbix extends utils.Adapter {
         }
 
         // Set
-        if(!Object.prototype.hasOwnProperty.call(this.zabbixSetArr, id)) {
-            if(custom.enabledSet) {
-                const objExt = { 
+        if (!Object.prototype.hasOwnProperty.call(this.zabbixSetArr, id)) {
+            if (custom.enabledSet) {
+                const objExt = {
                     'id': id,
                     'zabbixHost': custom.zabbixHost,
                     'zabbixItemKey': custom.zabbixItemKey || id,
@@ -143,9 +123,9 @@ class Zabbix extends utils.Adapter {
             }
         }
         // Get
-        if(!Object.prototype.hasOwnProperty.call(this.zabbixGetArr, id)) {
-            if(custom.enabledGet) {
-                const objExt = { 
+        if (!Object.prototype.hasOwnProperty.call(this.zabbixGetArr, id)) {
+            if (custom.enabledGet) {
+                const objExt = {
                     'id': id,
                     'zabbixItemGet': custom.zabbixItemGet,
                     'interval': parseToSeconds(custom.interval) || 30,
@@ -160,12 +140,12 @@ class Zabbix extends utils.Adapter {
 
     deleteObject(id) {
         //Set
-        if(Object.prototype.hasOwnProperty.call(this.zabbixSetArr, id)) {
+        if (Object.prototype.hasOwnProperty.call(this.zabbixSetArr, id)) {
             this.log.info('Remove Zabbix Set for id: ' + id);
             delete this.zabbixSetArr[id];
         }
         //Get
-        if(Object.prototype.hasOwnProperty.call(this.zabbixGetArr, id)) {
+        if (Object.prototype.hasOwnProperty.call(this.zabbixGetArr, id)) {
             this.log.info('Remove Zabbix Get for id: ' + id);
             delete this.zabbixGetArr[id];
         }
@@ -177,12 +157,12 @@ class Zabbix extends utils.Adapter {
      * @param {ioBroker.State | null | undefined} state
      */
     onStateChange(id, state) {
-        if(state) {
-            if(Object.prototype.hasOwnProperty.call(this.zabbixSetArr, id)) {
-                if(state.from != 'system.adapter.' + this.namespace) {
-                    this.log.debug('Catch state change "'+id+'": ' + JSON.stringify(state));
+        if (state) {
+            if (Object.prototype.hasOwnProperty.call(this.zabbixSetArr, id)) {
+                if (state.from != 'system.adapter.' + this.namespace) {
+                    this.log.debug('Catch state change "' + id + '": ' + JSON.stringify(state));
                     const objExt = this.zabbixSetArr[id];
-                    if(state.ack === objExt.Ack) {
+                    if (state.ack === objExt.Ack) {
                         this.sendToZabbix(objExt.zabbixHost, objExt.zabbixItemKey, state.val);
                     } else {
                         this.log.debug('Ignore state value change, because unmatched ack');
@@ -209,7 +189,7 @@ class Zabbix extends utils.Adapter {
     // 	}
     // }
 
-  
+
     main() {
         const adapter = this;
 
@@ -237,10 +217,10 @@ class Zabbix extends utils.Adapter {
         }
 
         this.getObjectView('system', 'state', {}, function (err, doc) {
-            if(doc && doc.rows) {
-                for(let i = 0, l = doc.rows.length; i < l; i++) {
+            if (doc && doc.rows) {
+                for (let i = 0, l = doc.rows.length; i < l; i++) {
                     const obj = doc.rows[i];
-                    if(obj && obj.id && obj.value && obj.value.common && obj.value.common.custom && 
+                    if (obj && obj.id && obj.value && obj.value.common && obj.value.common.custom &&
                         obj.value.common.custom[adapter.namespace] && obj.value.common.custom[adapter.namespace].enabled) {
                         adapter.addToObjects(obj.id, obj);
                     }
@@ -254,7 +234,7 @@ class Zabbix extends utils.Adapter {
         this.setState('info.connection', false, true);
 
         this.log.debug('Before zabbix_connect');
-        
+
         this.zabbix_connect();
 
         this.subscribeForeignObjects('*');
@@ -265,16 +245,16 @@ class Zabbix extends utils.Adapter {
         const adapter = this;
         adapter.log.debug('sendToZabbix(' + zabbixHost + ', ' + zabbixItemKey + ', ' + val + ')');
 
-        if(this.isConnected && this.isInitialized) {
+        if (this.isConnected && this.isInitialized) {
             const data = {
                 server: this.config.host,
                 host: zabbixHost,
                 key: zabbixItemKey,
                 value: val.toString()
             };
-            ZabbixPromise.sender(data).then(function(response) {
+            ZabbixPromise.sender(data).then(function (response) {
                 adapter.log.debug('Zabbix Set response: ' + JSON.stringify(response));
-            }).catch(function(response) {
+            }).catch(function (response) {
                 adapter.log.error('Zabbix Set response: ' + JSON.stringify(response));
             });
         } else {
@@ -286,23 +266,23 @@ class Zabbix extends utils.Adapter {
         const adapter = this;
         const icnt = Object.keys(objArr).length;
         adapter.log.debug('getFromZabbix, count: ' + icnt);
-        if(icnt > 0) {
+        if (icnt > 0) {
             const itemids = Object.values(objArr).map(a => a.zabbixItemGet);
 
-            if(this.isConnected && this.isInitialized && itemids.length > 0) {
+            if (this.isConnected && this.isInitialized && itemids.length > 0) {
                 try {
                     const data = {
                         itemids: itemids,
                         output: ['lastvalue']
                     };
-                    adapter.zabbix.request('item.get', data).then(function(response) {
+                    adapter.zabbix.request('item.get', data).then(function (response) {
                         adapter.log.debug('Zabbix Get response: ' + JSON.stringify(response));
                         adapter.processZabbixResponse(response);
-                    }).catch(function(response) {
+                    }).catch(function (response) {
                         adapter.log.error('Zabbix Get response: ' + JSON.stringify(response));
                         adapter.log.warn('There are an error while processing request.');
                         adapter.disconnectFromZabbix();
-                        for(const i in objArr) {
+                        for (const i in objArr) {
                             adapter.zabbixGetArr[objArr[i].id].status = 0;
                         }
                     });
@@ -310,13 +290,13 @@ class Zabbix extends utils.Adapter {
                     adapter.log.error(JSON.stringify(err));
                     adapter.log.warn('There are an error while processing request.');
                     adapter.disconnectFromZabbix();
-                    for(const i in objArr) {
+                    for (const i in objArr) {
                         adapter.zabbixGetArr[objArr[i].id].status = 0;
                     }
                 }
             } else {
                 adapter.log.debug('Still not initialized, ignore.');
-                for(const i in objArr) {
+                for (const i in objArr) {
                     adapter.zabbixGetArr[objArr[i].id].status = 0;
                 }
             }
@@ -325,15 +305,14 @@ class Zabbix extends utils.Adapter {
 
     processZabbixResponse(response) {
         this.log.debug('processZabbixResponse call, count = ' + Object.keys(response).length);
-        for (const i in response)
-        {
+        for (const i in response) {
             const obj = Object.values(this.zabbixGetArr).find(o => o.zabbixItemGet == response[i].itemid);
-            if(obj) {
+            if (obj) {
                 this.log.debug('Found matched object in zabbixGetArr: ' + JSON.stringify(obj));
                 this.zabbixGetArr[obj.id].ttl = this.zabbixGetArr[obj.id].interval;
                 this.zabbixGetArr[obj.id].status = 0;
                 this.log.debug('Update state value "' + obj.id + '" (val = ' + response[i].lastvalue + ', ack = ' + this.zabbixGetArr[obj.id].setAck + ')');
-                this.setStateAsync(obj.id, response[i].lastvalue, this.zabbixGetArr[obj.id].setAck);
+                this.setForeignStateAsync(obj.id, response[i].lastvalue, this.zabbixGetArr[obj.id].setAck);
             }
         }
     }
@@ -353,11 +332,11 @@ class Zabbix extends utils.Adapter {
     disconnectFromZabbix() {
         const adapter = this;
         adapter.log.debug('Disconnecting from Zabbix server.');
-        if(adapter.isConnected) { 
+        if (adapter.isConnected) {
             adapter.setConnectionState(false);
         }
         adapter.stopTimer();
-        setTimeout(function() {
+        setTimeout(function () {
             adapter.zabbix_connect();
         }, 30000);
     }
@@ -365,7 +344,7 @@ class Zabbix extends utils.Adapter {
     zabbix_connect() {
         const adapter = this;
         this.log.debug('zabbix_connect');
-        if(!this.config.username) {
+        if (!this.config.username) {
             this.log.warn('Username is not defined!');
             return;
         }
@@ -378,11 +357,12 @@ class Zabbix extends utils.Adapter {
             });
 
             this.log.debug('Before login');
-            
-            this.zabbix.login().then(function() {
+            this.log.debug(`Trying to connect to ${this.zabbix_url}`);
+
+            this.zabbix.login().then(function () {
                 adapter.log.debug('Callback login zabbix_connect');
                 adapter.setConnectionState(true);
-            }).catch(function(err) {
+            }).catch(function (err) {
                 adapter.log.error(JSON.stringify(err));
                 adapter.log.warn('Can\'t connect to Zabbix server! Will try to connect in 30 sec...');
                 adapter.disconnectFromZabbix();
@@ -398,7 +378,7 @@ class Zabbix extends utils.Adapter {
         this.log.debug('Set connection state to: ' + state);
         this.setState('info.connection', state, true);
         this.isConnected = state;
-        if(state) {
+        if (state) {
             this.log.info('Connected to Zabbix server');
             this.init();
         } else {
@@ -410,8 +390,8 @@ class Zabbix extends utils.Adapter {
         const adapter = this;
         for (const key in this.zabbixSetArr) {
             const objExt = this.zabbixSetArr[key];
-            this.getState(objExt.zabbixItemKey, function(err, obj) {
-                if(!err && obj) {
+            this.getState(objExt.zabbixItemKey, function (err, obj) {
+                if (!err && obj) {
                     adapter.sendToZabbix(objExt.zabbixHost, objExt.zabbixItemKey, obj.val);
                 }
             });
@@ -420,35 +400,35 @@ class Zabbix extends utils.Adapter {
 
     startTimer() {
         const adapter = this;
-        this.globalTimer = setTimeout(function() {
+        this.globalTimer = setTimeout(function () {
             adapter.onTick();
         }, 1000);
     }
 
     stopTimer() {
         this.log.debug('Stopping timer.');
-        clearTimeout(this.globalTimer);
+        if (this.globalTimer) clearTimeout(this.globalTimer);
     }
 
     onTick() {
         this.log.silly('Timer tick: ' + JSON.stringify(this.zabbixGetArr));
-        if(this.isConnected && this.isInitialized) {
+        if (this.isConnected && this.isInitialized) {
             const objArr = [];
 
             for (const key in this.zabbixGetArr) {
                 const objExt = this.zabbixGetArr[key];
                 objExt.ttl = objExt.ttl - 1;
-                if(objExt.ttl < 0) objExt.ttl = 0;
-                if(objExt.ttl == 0 && objExt.status == 0) {
+                if (objExt.ttl < 0) objExt.ttl = 0;
+                if (objExt.ttl == 0 && objExt.status == 0) {
                     objExt.status = 1;
                     objArr.push(this.zabbixGetArr[key]);
                 }
             }
-            
-            if(objArr.length > 0) {
+
+            if (objArr.length > 0) {
                 this.getFromZabbix(objArr);
             }
-            
+
             this.startTimer();
         } else {
             this.log.debug('Not initialized, ignore.');
@@ -458,7 +438,7 @@ class Zabbix extends utils.Adapter {
 
     init() {
         this.log.debug('Init call');
-        if(this.isConnected && this.isInitialized) {
+        if (this.isConnected && this.isInitialized) {
             this.firstSync();
             this.onTick();
         }

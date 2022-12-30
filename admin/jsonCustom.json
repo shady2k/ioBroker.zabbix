@@ -1,0 +1,64 @@
+{
+    "items": {
+        "_get": {
+            "newLine": true,
+            "type": "header",
+            "text": "Get",
+            "sm": 12,
+            "size": 3
+        },
+        "enabledGet": {
+            "type": "checkbox",
+            "default": false,
+            "label": "Enabled",
+            "sm": 2
+        },
+        "zabbixItemGet": {
+            "type": "text",
+            "label": "Zabbix item ID",
+            "sm": 4
+        },
+        "interval": {
+            "type": "text",
+            "label": "Period of time",
+            "sm": 2,
+            "default": "30s"
+        },
+        "Ack": {
+            "type": "checkbox",
+            "default": false,
+            "label": "Ack",
+            "sm": 2
+        },
+        "_set": {
+            "newLine": true,
+            "type": "header",
+            "text": "Set",
+            "sm": 12,
+            "size": 3
+        },
+        "enabledSet": {
+            "type": "checkbox",
+            "default": false,
+            "label": "Enabled",
+            "sm": 2
+        },
+        "zabbixHost": {
+            "type": "text",
+            "label": "Technical name of monitored host",
+            "sm": 4
+        },
+        "zabbixItemKey": {
+            "type": "text",
+            "label": "Zabbix item key",
+            "help": "leave blank if matches with ioBroker state name",
+            "sm": 2
+        },
+        "setAck": {
+            "type": "checkbox",
+            "default": true,
+            "label": "Ack",
+            "sm": 2
+        }
+    }
+}

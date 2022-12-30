@@ -1,0 +1,79 @@
+{
+    "i18n": false,
+    "type": "panel",
+    "items": {
+        "_connection": {
+            "newLine": true,
+            "type": "header",
+            "text": "Zabbix connection settings",
+            "sm": 12,
+            "size": 3
+        },
+        "host": {
+            "type": "text",
+            "label": "Zabbix server IP",
+            "sm": 12,
+            "md": 4,
+            "lg": 3
+        },
+        "port": {
+            "type": "number",
+            "label": "Zabbix server Port",
+            "sm": 12,
+            "md": 4,
+            "lg": 3,
+            "placeholder": "80",
+            "default": 80,
+            "min": 0,
+            "max": 65565
+        },
+        "protocol": {
+            "type": "select",
+            "label": "Zabbix server protocol",
+            "newLine": true,
+            "sm": 12,
+            "md": 4,
+            "lg": 3,
+            "default": "http",
+            "options": [
+                {
+                    "value": "http",
+                    "label": "http"
+                },
+                {
+                    "value": "https",
+                    "label": "https"
+                }
+            ]
+        },
+        "path": {
+            "type": "text",
+            "label": "Zabbix server path",
+            "default": "/",
+            "sm": 12,
+            "md": 4,
+            "lg": 3
+        },
+        "_auth": {
+            "newLine": true,
+            "type": "header",
+            "text": "Authentithication settings",
+            "sm": 12,
+            "size": 3
+        },
+        "username": {
+            "type": "text",
+            "label": "Username",
+            "sm": 12,
+            "md": 4,
+            "lg": 3
+        },
+        "password": {
+            "type": "password",
+            "label": "Password",
+            "sm": 12,
+            "md": 4,
+            "lg": 3
+        }
+    }
+}

@@ -1,5 +1,4 @@
 <html>
-
 <head>
 
     <!-- Load ioBroker scripts and styles-->
@@ -48,6 +47,8 @@
                 settings.host = parts[0];
                 settings.port = parts[1] || 80;
                 delete settings.url;
+            } else {
+                settings.port = settings.port || 80
             }
 
             systemConfig.native = systemConfig.native || {};

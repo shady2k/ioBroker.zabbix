@@ -1,7 +1,7 @@
 {
     "common": {
         "name": "zabbix",
-        "version": "0.0.3",
+        "version": "0.0.4",
         "news": {
             "0.0.3": {
                 "en": "Upgrade minimist to version 0.2.1",
@@ -26,13 +26,13 @@
                 "zh-cn": "首次出版"
             }
         },
-        "title": "ioBroker Zabbix integration",
+        "title": "ioBroker Zabbix integration adapter",
         "titleLang": {
-            "en": "ioBroker Zabbix integration",
+            "en": "ioBroker Zabbix integration adapter",
             "ru": "Интеграция ioBroker с Zabbix"
         },
         "desc": {
-            "en": "ioBroker Zabbix integration",
+            "en": "ioBroker Zabbix integration adapter",
             "ru": "Интеграция ioBroker с Zabbix"
         },
         "authors": [
@@ -55,20 +55,40 @@
         "mode": "daemon",
         "type": "general",
         "compact": true,
-        "materialize": true,
-        "materializeTab": true,
-        "adminTab": {},
+        "adminUI": {
+            "config": "json",
+            "tab": "materialize"
+        },
+        "adminTab": {
+            "singleton": true,
+            "name": {
+                "en": "Template (JavaScript)",
+                "de": "Vorlage (JavaScript)",
+                "ru": "Шаблон (JavaScript)",
+                "pt": "Modelo (JavaScript)",
+                "nl": "Sjabloon (JavaScript)",
+                "fr": "Modèle (JavaScript)",
+                "it": "Modello (JavaScript)",
+                "es": "Plantilla (JavaScript)",
+                "pl": "Szablon (JavaScript)",
+                "zh-cn": "模板 (JavaScript)"
+            },
+            "link": "",
+            "fa-icon": "info"
+        },
         "supportCustoms": true,
         "dependencies": [
             {
-                "js-controller": ">=1.4.2"
+                "js-controller": ">=3.3.22"
+            }
+        ],
+        "globalDependencies": [
+            {
+                "admin": ">=5.1.13"
             }
         ]
     },
-    "native": {
-        "option1": true,
-        "option2": "42"
-    },
+    "native": {},
     "objects": [],
     "instanceObjects": [
         {

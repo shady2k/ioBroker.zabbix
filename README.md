@@ -4,7 +4,6 @@
 [![NPM version](http://img.shields.io/npm/v/iobroker.zabbix.svg)](https://www.npmjs.com/package/iobroker.zabbix)
 [![Downloads](https://img.shields.io/npm/dm/iobroker.zabbix.svg)](https://www.npmjs.com/package/iobroker.zabbix)
 ![Number of Installations (latest)](http://iobroker.live/badges/zabbix-installed.svg)
-![Number of Installations (stable)](http://iobroker.live/badges/zabbix-stable.svg)
 
 [![NPM](https://nodei.co/npm/iobroker.zabbix.png?downloads=true)](https://nodei.co/npm/iobroker.zabbix/)
 
@@ -25,6 +24,8 @@ Ack - only state with this acknowledge will be sent to Zabbix (Checked Ack - ack
 
 ## Changelog
 
+### 0.0.4
+Updated for support new version of Admin UI
 ### 0.0.1
 * (shady2k) initial release
 

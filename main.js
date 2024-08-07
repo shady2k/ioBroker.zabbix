@@ -4,7 +4,7 @@
  * Created with @iobroker/create-adapter v1.19.0
  */
 const utils = require('@iobroker/adapter-core');
-const ZabbixPromise = require('zabbix-promise');
+const ZabbixPromise = require('./zabbix-promise');
 
 function parseToSeconds(timeString) {
     let seconds = parseFloat(timeString);

@@ -7,7 +7,7 @@
 
 [![NPM](https://nodei.co/npm/iobroker.zabbix.png?downloads=true)](https://nodei.co/npm/iobroker.zabbix/)
 
-This adapter connects ioBroker with Zabbix Server.
+This adapter connects ioBroker with Zabbix Server. Supported Zabbix Server versions from 5.4 onwards.
 
 ### Getting started
 
@@ -24,6 +24,8 @@ Ack - only state with this acknowledge will be sent to Zabbix (Checked Ack - ack
 
 ## Changelog
 
+### 0.0.5
+Fix Zabbix API usage #13
 ### 0.0.4
 Updated for support new version of Admin UI
 ### 0.0.1
@@ -32,7 +34,7 @@ Updated for support new version of Admin UI
 ## License
 MIT License
 
-Copyright (c) 2022 Author <shady2k@gmail.com>
+Copyright (c) 2024 Author <shady2k@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -51,5 +53,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-Copyright (c) 2022 shady2k shady2k@gmail.com
